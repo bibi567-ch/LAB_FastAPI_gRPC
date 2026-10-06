@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package crypto;
+
+service CryptoService {
+  rpc StreamMarketData(StreamRequest) returns (stream MarketDataResponse);
+}
+
+message StreamRequest {
+  string ticker = 1;
+  int32 interval_seconds = 2;
+}
+
+message MarketDataResponse {
+  string ticker = 1;
+  double price_usd = 2;
+  int64 timestamp = 3;
+}

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard gRPC Cripto</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f4f6f9;
+        text-align: center;
+        padding: 20px;
+      }
+      .card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 760px;
+        margin: auto;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .price {
+        font-size: 2em;
+        font-weight: bold;
+        color: #1b365d;
+        margin: 12px 0;
+      }
+      input {
+        padding: 8px 12px;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        width: 200px;
+      }
+      button {
+        padding: 9px 16px;
+        background: #1b365d;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-left: 8px;
+      }
+      canvas {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Monitor Financiero gRPC (Web)</h2>
+      <input type="text" id="tickerInput" value="bitcoin" />
+      <button onclick="startStream()">Conectar Stream</button>
+      <div class="price" id="priceLabel">$ --.-- USD</div>
+      <canvas id="cryptoChart"></canvas>
+    </div>
+
+    <script>
+      let ws = null;
+      const ctx = document.getElementById("cryptoChart").getContext("2d");
+      const chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: [],
+          datasets: [{
+            label: "Precio USD",
+            data: [],
+            borderColor: "#1B365D",
+            fill: false,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          animation: false
+        }
+      });
+
+      function startStream() {
+        const ticker = document.getElementById("tickerInput").value.trim().toLowerCase();
+        if (!ticker) {
+          alert("Debes ingresar un activo válido.");
+          return;
+        }
+
+        if (ws) {
+          ws.close();
+        }
+
+        ws = new WebSocket(`ws://${location.hostname}:8001/ws/crypto/${ticker}`);
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          const previous = chart.data.datasets[0].data[chart.data.datasets[0].data.length - 1];
+
+          document.getElementById("priceLabel").innerText = `${data.ticker.toUpperCase()}: $${data.price.toLocaleString()} USD`;
+          chart.data.labels.push(new Date(data.timestamp * 1000).toLocaleTimeString());
+          chart.data.datasets[0].data.push(data.price);
+
+          if (chart.data.labels.length > 12) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+          }
+
+          const current = data.price;
+          const lineColor = previous !== undefined ? (current >= previous ? "#2e8b57" : "#d9534f") : "#1B365D";
+          chart.data.datasets[0].borderColor = lineColor;
+          chart.update();
+        };
+      }
+    </script>
+  </body>
+</html>
